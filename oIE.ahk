@@ -139,7 +139,7 @@ IWebBrowserApp_from_IWebDOCUMENT( IWebDOCUMENT )
 	static IID_IWebBrowserApp := "{0002DF05-0000-0000-C000-000000000046}"  ; IID_IWebBrowserApp
 	return ComObj(9,ComObjQuery( IHTMLWindow2_from_IWebDOCUMENT( IWebDOCUMENT ), IID_IWebBrowserApp, IID_IWebBrowserApp),1)
 	}
-
+;~ ControlGet, hwnd, Hwnd,, Internet Explorer_Server1, ahk_class IEFrame
 IWebBrowserApp_from_Internet_Explorer_Server_HWND( hwnd, Svr#=1 ) 
 	{               ;// based on ComObjQuery docs
 	static msg := DllCall( "RegisterWindowMessage", "str", "WM_HTML_GETOBJECT" )

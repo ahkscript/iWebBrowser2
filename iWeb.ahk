@@ -583,42 +583,52 @@ iWeb_Txt2Doc(t)
 	Return doc
 }
 ;~ Sets a window and tab as active by the page title
+iWeb_Activate("Home") 
 iWeb_Activate(sTitle) 
 { 
-; thanks Sean 
-; http://www.autohotkey.com/forum/viewtopic.php?p=231093#231093 
 	DllCall("LoadLibrary", "str", "oleacc.dll") 
-	HWND:=COM_Invoke(pwb:=iWeb_getwin(sTitle),"HWND")
+	HWND:=oIE_get(sTitle).HWND
 	DetectHiddenWindows, On 
 	WinActivate,% "ahk_id " HWND
 	WinWaitActive,% "ahk_id " HWND,,5
 	ControlGet, hTabBand, hWnd,, TabBandClass1, ahk_class IEFrame
 	ControlGet, hTabUI  , hWnd,, DirectUIHWND1, ahk_id %hTabBand% 
-	If   hTabUI && DllCall("oleacc\AccessibleObjectFromWindow", "Uint", hTabUI, "Uint",-4, "Uint", COM_GUID4String(IID_IAccessible,"{618736E0-3C3D-11CF-810C-00AA00389B71}"), "UintP", pacc)=0 
+	
+	VarSetCapacity(CLSID, 16)
+	nSize=38
+	wString := sString := "{618736E0-3C3D-11CF-810C-00AA00389B71}"
+	if(nSize = "")
+		nSize:=DllCall("kernel32\MultiByteToWideChar", "Uint", 0, "Uint", 0, "Uint", &sString, "int", -1, "Uint", 0, "int", 0)
+	VarSetCapacity(wString, nSize * 2 + 1)
+	DllCall("kernel32\MultiByteToWideChar", "Uint", 0, "Uint", 0, "Uint", &sString, "int", -1, "Uint", &wString, "int", nSize + 1)
+	DllCall("ole32\CLSIDFromString", "Uint",&wString , "Uint", &CLSID)
+	
+	If   hTabUI && DllCall("oleacc\AccessibleObjectFromWindow", "Uint", hTabUI, "Uint",-4, "Uint", &CLSID , "UintP", pacc)=0 
 	{ 
-		Loop, %   COM_Invoke(pacc, "accChildCount") 
-			If   paccChild:=COM_Invoke(pacc, "accChild", A_Index) 
-				If   COM_Invoke(paccChild, "accRole", 0) = 0x3C 
+		pacc := ComObject(9, pacc, 1), ObjAddRef(pacc)
+		Loop, %   pacc.accChildCount 
+			If   paccChild:=pacc.accChild(A_Index) 
+				If   paccChild.accRole(0+0) = 0x3C 
 				{ 
 					paccTab:=paccChild 
 					Break 
 				} 
-				Else   COM_Release(paccChild) 
-		COM_Release(pacc) 
+				Else   ObjRelease(paccChild) 
+		ObjRelease(pacc) 
 	} 
 	If   pacc:=paccTab 
 	{ 
-		Loop, %   COM_Invoke(pacc, "accChildCount") 
-			If   paccChild:=COM_Invoke(pacc, "accChild", A_Index) 
-				If   COM_Invoke(paccChild, "accName", 0) = sTitle   
+		Loop, %   pacc.accChildCount
+			If   paccChild:=pacc.accChild(A_Index) 
+				If   paccChild.accName(0+0) = sTitle   
 				{ 
-					COM_Release(pwb),VarSetCapacity(pwb,0),VarSetCapacity(HWND,0)
-					COM_Invoke(paccChild, "accDoDefaultAction", 0)
-					COM_Release(paccChild) 
+					ObjRelease(pwb)
+					paccChild.accDoDefaultAction(0)
+					ObjRelease(paccChild) 
 					Break 
 				} 
-				Else   COM_Release(paccChild) 
-		COM_Release(pacc) 
+				Else   ObjRelease(paccChild) 
+		ObjRelease(pacc) 
 	}  
 	WinActivate,% sTitle
 } 
