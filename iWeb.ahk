@@ -63,24 +63,11 @@ iWeb_Activate(sTitle)
 		}
 	;~ reuse an existing tab or window
 	iWeb_GetWin( ByRef sTitle = "", ByRef iHWND = "", ByRef sURL = "", ByRef sHTML = "" )
-		{
-		Static IE_path
-		
+		{		
 		;; find where windows believes IE is installed
 		;; certain corp installs may have this in other than expected folders
-		if !IE_path
-			RegRead, IE_path, HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\IEXPLORE.EXE
-		;~ MsgBox % IE_path
-		;; Perhaps policies prevent reading this key
-		if ( ErrorLevel || !IE_path )
-			IE_path := "C:\Program Files\Internet Explorer\iexplore.exe"
+		IE_path := IE_GetPath()
 		
-		;; make sure it installed
-		if !FileExist( IE_path )
-			{
-			MsgBox, 4112, Internet Explorer Not Found, IE does not appear to be installed`nCannot continue `nClick OK to Exit!!!
-			ExitApp
-			}
 		;~ this function is pointless if no instance of IE is open
 		;~ one edit you mihgt make is to have this function open IE and maybe go to the home page
 		if ( !winexist( "ahk_class IEFrame" ) )
@@ -157,7 +144,35 @@ iWeb_Activate(sTitle)
 				}
 			}
 		}
-	
+	IE_GetPath(){
+		Static IE_path
+		;; find where windows believes IE is installed
+		;; certain corp installs may have this in other than expected folders
+		if !IE_path
+			RegRead, IE_path, HKLM, SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\IEXPLORE.EXE
+		;~ MsgBox % IE_path
+		;; Perhaps policies prevent reading this key
+		if ( ErrorLevel || !IE_path )
+			IE_path := "C:\Program Files\Internet Explorer\iexplore.exe"
+		
+		;; make sure it installed
+		if !FileExist( IE_path )
+			{
+			MsgBox, 4112, Internet Explorer Not Found, IE does not appear to be installed`nCannot continue `nClick OK to Exit!!!
+			ExitApp
+			}
+		
+		return IE_path
+		}
+	IE_GetVersion(){
+		FileGetVersion, version, % IE_GetPath()
+		if ErrorLevel = 1
+			ieVer = 11
+		else
+			ieVer := SubStr(version, 1, InStr(version, ".")-1)
+		
+		return ieVer
+		}
 	clean_IE_Title( ByRef sTitle = "" ) 
 		{
 		return sTitle := RegExReplace( sTitle ? sTitle : active_IE_Title(), IE_Suffix() "$", "" )
@@ -524,8 +539,11 @@ iWeb_FireEvents(ele)
 	{
 		If	(js && (pWin:=	iWeb_DomWin(pwb,frm)))
 		{
-			COM_Invoke(pWin,	"execScript",	js)
-			COM_Release(pWin)
+			if IE_GetVersion() = 11
+				pWin.eval(js)
+			else
+				pWin.execScript(js)
+			ObjRelease(pWin)
 		}
 		Return
 	}
@@ -534,8 +552,8 @@ iWeb_FireEvents(ele)
 	{
 		If	(var && (pWin:=	iWeb_DomWin(pwb,frm)))
 		{
-			rslt:=	COM_Invoke(pWin,	var)
-			COM_Release(pWin)
+			rslt:=	pWin.%var%
+			ObjRelease(pWin)
 		}
 		Return rslt
 	}
@@ -596,8 +614,8 @@ iWeb_FireEvents(ele)
 ;~ takes an html fragment and creates a DOM document from a string
 iWeb_Txt2Doc(t)
 {
-	If	doc := COM_CreateObject("{25336920-03F9-11CF-8FD0-00AA00686F13}") 
-		COM_Invoke(doc, "write", t),COM_Invoke(doc, "close") 
+	If	doc := ComObjCreate("{25336920-03F9-11CF-8FD0-00AA00686F13}") 
+		doc.write(t),doc.close() 
 	Return doc
 }
 ;~ Sets a window and tab as active by the page title
