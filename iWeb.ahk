@@ -44,7 +44,13 @@ iWeb_Txt2Doc(t)
 iWeb_Activate(sTitle)
 */
 
-
+pwb := iWeb_Model(800,1200)
+iweb_nav(pwb,"https://google.com")
+iWeb_setDomObj(pwb,"q","fart")
+pwb.document.all["btnK"].onmousemove
+pwb.document.all["btnK"].onmouseover
+pwb.document.all["btnK"].focus()
+iWeb_clickDomObj(pwb,"btnK")
 
 
 ;~ getting/destroying browser handles*
@@ -52,12 +58,15 @@ iWeb_Activate(sTitle)
 	;~ A new internet explorer window
 	iWeb_NewIe()
 		{
-		Return	pwb := (pwb := ComObjCreate("InternetExplorer.Application") ) ? pwb.Visible:=True" : 0
+		(pwb := ComObjCreate("InternetExplorer.Application")).Visible:=True
+		Return	pwb
 		}
 	;~ New internet explorer window always on top with titlebar only
 	iWeb_Model(h=550,w=900)
 		{
-		If	pwb := (pwb := iWeb_newIe()) ? (pwb, pwb.MenuBar:=0, pwb.ToolBar:=0, pwb.Resizablev0, pwb.AddressBar:=0, pwb.StatusBar:=0, pwb.Height:=h, pwb.Width:=w) : 
+		if pwb := iWeb_newIe(){
+			pwb.MenuBar:=false, pwb.ToolBar:=false, pwb.Resizable:=false, pwb.AddressBar:=false, pwb.StatusBar:=false, pwb.Height:=h, pwb.Width:=w
+		}
 		WinSet,AlwaysOnTop,On,% "ahk_ID " pwb.hwnd
 		Return	pwb
 		}
@@ -272,7 +281,7 @@ iWeb_Activate(sTitle)
 	iWeb_BRSRfromOBJ(obj)
 	{ ;; accepts any child object and returns an instance of iexplore.exe
 		static IID_IWebBrowserApp := "{0002DF05-0000-0000-C000-000000000046}"  ; IID_IWebBrowserApp
-		return ComObj(9,obj, IID_IWebBrowserApp, IID_IWebBrowserApp),1)
+		return IWebBrowserApp_from_IWebDOCUMENT( obj )
 	}
 
 	;~ Navigate to a url
@@ -293,24 +302,12 @@ iWeb_Activate(sTitle)
 	;~ wait for a page to finish loading
 	iWeb_complete(pwb)						;	returns bool for success or failure
 	{	
-		If  !pwb							;	test to see if we have a valid interface pointer
-			sleep, 5000						;	ExitApp if we dont
-		Else
-		{
-			loop 20							;	sets limit if itenerations to 40 seconds 80*500=40000=40 secs
-				If not (rdy:=pwb.readyState = 4)
-					Break				;	return success
-				Else	Sleep,100					;	sleep .1 second between cycles
-			loop 80							;	sets limit if itenerations to 40 seconds 80*500=40000=40 secs
-				If (rdy:=pwb.readyState = 4)
-					Break
-				Else	Sleep,500					;	sleep half second between cycles
-			Loop	80				
-				If	(rdy:=pwbdocument.readystate="complete")
-					Return 	1				;	return success
-				Else	Sleep,100
-		}
-		Return 0						;	lets face it if it got this far it failed
+		while !pwb.busy
+			Sleep 1
+		while pwb.busy
+			sleep 1		
+		while pwb.readystate != 4
+			sleep 1				
 	}								;	end complete
 	;~ get the window onject from an object
 	iWeb_DomWin(pdsp,frm="")
@@ -319,7 +316,7 @@ iWeb_Activate(sTitle)
 			{
 			Loop, Parse, frm, `, 
 				{
-				frame:=pWin.document.all.item['" A_LoopField "'].contentwindow
+				frame:=pWin.document.all.item[A_LoopField ].contentwindow
 				ObjRelease(pWin)
 				pWin:=IHTMLWindow2_from_IWebDOCUMENT( frame )
 				ObjRelease(frame)
@@ -356,8 +353,7 @@ iWeb_Activate(sTitle)
 		*/
 		If	itm		:=	iWeb_GetElementByAll(pwb,obj,0,frm)	;if this fails there really isnt any need to do below
 			{
-			T:=iWeb_inpt(itm) ? "value" : "innerHTML")
-			rslt	.=	iWeb_uriDecode(itm.%T%) 
+			rslt	.=	iWeb_inpt(itm) ? iWeb_uriDecode(itm.value) : iWeb_uriDecode(itm.innerHTML)
 			iWeb_FireEvents(itm)
 			ObjRelease(itm)
 			}
@@ -378,8 +374,7 @@ iWeb_Activate(sTitle)
 		If	itm		:=	iWeb_GetElementByAll(pwb,obj,0,frm)	;if this fails there really isnt any need to do below
 			{
 			;~ 	http://www.autohotkey.com/forum/viewtopic.php?p=221631#221631 iWeb_uriDecode(str)
-			v:=iWeb_inpt(itm) ? "Value" : "innerHTML"
-			itm.%v% :=iWeb_UrlEncode(t)
+			v:=iWeb_inpt(itm) ? itm.value :=iWeb_UrlEncode(t) : itm.innerHTML :=iWeb_UrlEncode(t)
 			iWeb_FireEvents(itm)
 			ObjRelease(itm)
 			d=1
@@ -387,14 +382,15 @@ iWeb_Activate(sTitle)
 		Return d
 		}
 
-	iWeb_FindbyText(needle,win="A",property="",offset=0,frm="")
+	;~ iWeb_FindbyText(needle,win="A",property="",offset=0,frm="")
+	iWeb_FindbyText(needle,win="A",offset=0,frm="")
 		{
 		If	pWin	:=	iWeb_DomWin(pwb,frm) 
 			{
 			If	oRange:=pWin.document.body.createTextRange
 				{
 				oRange.findText(needle)
-				_res:=property ? pWin.Document.all.item[ oRange.parentElement.sourceIndex+offset].%property%) :  pWin.Document.all.item[ oRange.parentElement.sourceIndex+offset]
+				_res:=pWin.Document.all.item[ oRange.parentElement.sourceIndex+offset]
 				ObjRelease(oRange)
 				}	
 			}
@@ -406,7 +402,7 @@ iWeb_Activate(sTitle)
 
 iWeb_GetElementByAll(pdsp,obj,sindex=0,frm=""){ ;; returns object
 ;~ 	COM_Error(0)
-	Return element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? (sindex > 0 ?  pWin.document.all.[obj].item",sindex : pWin.document.all.item[obj]),ObjRelease(pWin)) : 
+	Return (element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? (sindex > 0 ?  pWin.document.all.item[obj][sindex] : pWin.document.all.item[obj]) : ) ,  ObjRelease(pWin)
 }
 
 ;~ iWeb_GetElementsByTag(pdsp,tag,obj=0,frm=""){  ;; returns object
@@ -419,10 +415,10 @@ iWeb_GetElementByAll(pdsp,obj,sindex=0,frm=""){ ;; returns object
 
 iWeb_FireEvents(ele)
 {
-	attributes:=iWeb_Attributes(ele)
-	Loop,Parse,attributes, `n
-		If	InStr(A_LoopField,"on")
-			ele.%A_LoopField%
+	;~ attributes:=iWeb_Attributes(ele)
+	;~ Loop,Parse,attributes, `n
+		;~ If	InStr(A_LoopField,"on")
+			;~ ele.%A_LoopField%
 }
 
 
@@ -551,7 +547,7 @@ iWeb_FireEvents(ele)
 	{
 		If	(var && (pWin:=	iWeb_DomWin(pwb,frm)))
 		{
-			rslt:=	pWin.%var%
+			;~ rslt:=	pWin.%var%
 			ObjRelease(pWin)
 		}
 		Return rslt
