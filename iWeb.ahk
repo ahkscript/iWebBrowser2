@@ -377,7 +377,6 @@ iWeb_Activate(sTitle)
 		*/
 		If	itm		:=	iWeb_GetElementByAll(pwb,obj,0,frm)	;if this fails there really isnt any need to do below
 			{
-			;~ 	making invoke take integers as Strings  ",	VT_BSTR:=8"
 			;~ 	http://www.autohotkey.com/forum/viewtopic.php?p=221631#221631 iWeb_uriDecode(str)
 			v:=iWeb_inpt(itm) ? "Value" : "innerHTML"
 			itm.%v% :=iWeb_UrlEncode(t)
@@ -396,7 +395,7 @@ iWeb_Activate(sTitle)
 				{
 				oRange.findText(needle)
 				_res:=property ? pWin.Document.all.item[ oRange.parentElement.sourceIndex+offset].%property%) :  pWin.Document.all.item[ oRange.parentElement.sourceIndex+offset]
-				COM_Release(oRange)
+				ObjRelease(oRange)
 				}	
 			}
 		Return	_res
@@ -407,23 +406,23 @@ iWeb_Activate(sTitle)
 
 iWeb_GetElementByAll(pdsp,obj,sindex=0,frm=""){ ;; returns object
 ;~ 	COM_Error(0)
-	Return element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? ((sindex > 0 ?  COM_Invoke(pWin,"document.all.['" obj "'].item",sindex) : COM_Invoke(pWin,"document.all.item", obj )),COM_Release(pWin)) : 
+	Return element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? (sindex > 0 ?  pWin.document.all.[obj].item",sindex : pWin.document.all.item[obj]),ObjRelease(pWin)) : 
 }
 
-iWeb_GetElementsByTag(pdsp,tag,obj=0,frm=""){  ;; returns object
-	Return element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? (COM_Invoke(pWin,"document.all.tags['" tag "'].item",obj),COM_Release(pWin)) : 
-}
+;~ iWeb_GetElementsByTag(pdsp,tag,obj=0,frm=""){  ;; returns object
+	;~ Return element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? (COM_Invoke(pWin,"document.all.tags['" tag "'].item",obj),COM_Release(pWin)) : 
+;~ }
 
-iWeb_Offset(pdsp,offset=0){
-	Return element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? (COM_Invoke(pWin,"document.all",COM_Invoke(pdsp,"sourceIndex") + offset),COM_Release(pWin)) : 
-}
+;~ iWeb_Offset(pdsp,offset=0){
+	;~ Return element := (pWin	:=	iWeb_DomWin(pdsp,frm) ) ? (COM_Invoke(pWin,"document.all",COM_Invoke(pdsp,"sourceIndex") + offset),COM_Release(pWin)) : 
+;~ }
 
 iWeb_FireEvents(ele)
 {
 	attributes:=iWeb_Attributes(ele)
 	Loop,Parse,attributes, `n
 		If	InStr(A_LoopField,"on")
-			COM_Invoke(ele,A_LoopField)
+			ele.%A_LoopField%
 }
 
 
@@ -446,9 +445,9 @@ iWeb_FireEvents(ele)
 	*/ 
 		If	pWin	:=	iWeb_DomWin(pwb,frm) 
 		{
-			COM_Invoke(pWin,"Document.all.item['" obj "'].click")
+			pWin.document.all.item[obj].click()
 			d=1
-			COM_Release(pWin)
+			ObjRelease(pWin)
 		}
 		Return	d
 	}
@@ -466,14 +465,14 @@ iWeb_FireEvents(ele)
 	*/
 		If	pWin	:=	iWeb_DomWin(pwb,frm) 
 		{
-			Loop,%	COM_Invoke(pWin,"document.links.length")
-				If	InStr(COM_Invoke(pWin,"document.links.item[" A_Index-1 "].innertext"),t)
+			Loop,%	pWin.document.links.length
+				If	InStr(pWin.document.links.item[A_Index-1].innertext,t)
 				{
-					COM_Invoke(pWin,"document.links.item[" A_Index-1 "].click")
+					pWin.document.links.item[A_Index-1].click()
 					d=1
 					Break
 				}	
-			COM_Release(pWin)
+			ObjRelease(pWin)
 		} ;;If	pWin
 		Return	d
 	}
@@ -491,14 +490,14 @@ iWeb_FireEvents(ele)
 	*/
 		If	pWin	:=	iWeb_DomWin(pwb,frm) 
 		{
-			Loop,%	COM_Invoke(pWin,"document.links.length")
-				If	InStr(COM_Invoke(pWin,"document.links.item[" A_Index-1 "].href"),t)
+			Loop,%	pWin.document.links.length
+				If	InStr(pWin.document.links.item[ A_Index-1 ].href,t)
 				{
-					COM_Invoke(pWin,"document.links.item[" A_Index-1 "].click")
+					pWin.document.links.item[A_Index-1].click()
 					d=1
 					Break
 				}	
-			COM_Release(pWin)
+			ObjRelease(pWin)
 		} ;;If	pWin
 		Return	d
 	}
@@ -516,16 +515,16 @@ iWeb_FireEvents(ele)
 	*/
 		If	pWin	:=	iWeb_DomWin(pwb,frm) 
 		{
-			Loop,%	COM_Invoke(pWin,"document.all.length")
-				If	iWeb_inpt(itm:=COM_Invoke(pWin,"document.all.item", A_Index-1)) ? InStr(COM_Invoke(pWin,"document.all.item[" A_Index-1 "].value"),t) : 0
+			Loop,%	pWin.document.all.length
+				If	iWeb_inpt(itm:=pWin.document.all.item(A_Index-1)) ? InStr(pWin.document.all.item[A_Index-1].value,t) : 0
 				{
-					COM_Invoke(itm,"click")
-					COM_Release(itm)
+					itm.click()
+					ObjRelease(itm)
 					d=1
 					Break
 				}	
-				Else	COM_Release(itm)
-			COM_Release(pWin)
+				Else	ObjRelease(itm)
+			ObjRelease(pWin)
 		} ;;If	pWin
 		Return	d
 	}
